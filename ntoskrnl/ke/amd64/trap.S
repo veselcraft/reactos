@@ -22,9 +22,7 @@ EXTERN KiXmmExceptionHandler:PROC
 EXTERN KiDeliverApc:PROC
 EXTERN KiDpcInterruptHandler:PROC
 
-#ifdef _WINKD_
 EXTERN KdSetOwedBreakpoints:PROC
-#endif
 
 
 /* GLOBALS *******************************************************************/
@@ -512,9 +510,6 @@ FUNC KiPageFault
 
     /* Check for success */
     test eax, eax
-#ifndef _WINKD_
-    jge PageFaultReturn
-#else
     jl PageFaultError
 
     /* Check whether the kernel debugger has owed breakpoints to be inserted */
@@ -523,7 +518,6 @@ FUNC KiPageFault
     jmp PageFaultReturn
 
 PageFaultError:
-#endif
 
     /* Disable interrupts again for the debugger */
     cli
