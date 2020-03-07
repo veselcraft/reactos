@@ -158,7 +158,7 @@ KdpServiceDispatcher(ULONG Service,
 
 BOOLEAN
 NTAPI
-KdpEnterDebuggerException(IN PKTRAP_FRAME TrapFrame,
+KdpTrap(IN PKTRAP_FRAME TrapFrame,
                           IN PKEXCEPTION_FRAME ExceptionFrame,
                           IN PEXCEPTION_RECORD ExceptionRecord,
                           IN PCONTEXT Context,
@@ -294,6 +294,23 @@ KdpEnterDebuggerException(IN PKTRAP_FRAME TrapFrame,
 
 BOOLEAN
 NTAPI
+KdpStub(IN PKTRAP_FRAME TrapFrame,
+        IN PKEXCEPTION_FRAME ExceptionFrame,
+        IN PEXCEPTION_RECORD ExceptionRecord,
+        IN PCONTEXT ContextRecord,
+        IN KPROCESSOR_MODE PreviousMode,
+        IN BOOLEAN SecondChanceException)
+{
+    return KdpTrap(TrapFrame,
+                   ExceptionFrame,
+                   ExceptionRecord,
+                   ContextRecord,
+                   PreviousMode,
+                   SecondChanceException);
+}
+
+BOOLEAN
+NTAPI
 KdIsThisAKdTrap(IN PEXCEPTION_RECORD ExceptionRecord,
                 IN PCONTEXT Context,
                 IN KPROCESSOR_MODE PreviousMode)
@@ -413,8 +430,6 @@ KdSystemDebugControl(IN SYSDBG_COMMAND Command,
                                 InputBufferLength,
                                 PreviousMode);
 }
-
-PKDEBUG_ROUTINE KiDebugRoutine = KdpEnterDebuggerException;
 
 PCHAR
 NTAPI
