@@ -28,6 +28,8 @@ typedef struct _SHUTDOWN_DLG_CONTEXT
     DWORD ShutdownOptions;
     BOOL bCloseDlg;
     BOOL bReasonUI;
+    BOOL bLunaUI;
+    
 } SHUTDOWN_DLG_CONTEXT, *PSHUTDOWN_DLG_CONTEXT;
 
 
@@ -89,6 +91,37 @@ GetShutdownReasonUI(VOID)
 
     return FALSE;
 //    return (VersionInfo.wProductType == VER_NT_WORKSTATION) ? FALSE : TRUE;
+}
+
+static
+BOOL
+GetShutdownLunaUI(VOID)
+{
+    DWORD dwValue, dwSize;
+    HKEY hKey;
+    LONG lRet;
+
+    lRet = RegOpenKeyExW(HKEY_LOCAL_MACHINE,
+                         L"Software\\Microsoft\\Windows\\CurrentVersion\\Reliability",
+                         0,
+                         KEY_QUERY_VALUE,
+                         &hKey);
+    if (lRet == ERROR_SUCCESS)
+    {
+        dwValue = 0;
+        dwSize = sizeof(dwValue);
+        RegQueryValueExW(hKey,
+                         L"LunaUI",
+                         NULL,
+                         NULL,
+                         (LPBYTE)&dwValue,
+                         &dwSize);
+        RegCloseKey(hKey);
+
+        return (dwValue != 0) ? TRUE : FALSE;
+    }
+
+    return FALSE;
 }
 
 DWORD
@@ -467,9 +500,12 @@ ShutdownDialogProc(
         case WM_COMMAND:
             switch (LOWORD(wParam))
             {
+                case IDC_BUTTON_SHUTDOWN:
+                    ExitWindowsEx(EWX_SHUTDOWN, SHTDN_REASON_MAJOR_OTHER);
+                case IDC_BUTTON_REBOOT:
+                    ExitWindowsEx(EWX_REBOOT, SHTDN_REASON_MAJOR_OTHER);
                 case IDOK:
                     ShutdownOnOk(hDlg, pContext->pgContext);
-
                 /* Fall back */
                 case IDCANCEL:
                 case IDHELP:
@@ -480,6 +516,13 @@ ShutdownDialogProc(
                 case IDC_SHUTDOWN_ACTION:
                     UpdateShutdownDesc(hDlg, pContext);
                     break;
+
+                case IDC_BUTTON_SLEEP:
+                    FIXME("Sleep in shutdown.c (line 508) is not implemented yet.");
+                    MessageBoxW(hDlg, L"Sleep in shutdown.c (line 508) is not implemented yet.", L"Message", MB_OK | MB_ICONEXCLAMATION);
+                    break;
+                
+                
             }
             break;
 
@@ -510,12 +553,13 @@ ShutdownDialog(
     Context.ShutdownOptions = ShutdownOptions;
     Context.bCloseDlg = FALSE;
     Context.bReasonUI = GetShutdownReasonUI();
+    Context.bLunaUI = GetShutdownLunaUI();
 
-    if (pgContext->hWlx && pgContext->pWlxFuncs)
+    if (pgContext->hWlx && pgContext->pWlxFuncs && !Context.bLunaUI)
     {
         ret = pgContext->pWlxFuncs->WlxDialogBoxParam(pgContext->hWlx,
                                                       pgContext->hDllInstance,
-                                                      MAKEINTRESOURCEW(Context.bReasonUI ? IDD_SHUTDOWN_REASON : IDD_SHUTDOWN),
+                                                      MAKEINTRESOURCEW(Context.bLunaUI ? IDD_SHUTDOWN_FANCY : (Context.bReasonUI ? IDD_SHUTDOWN_REASON : IDD_SHUTDOWN)),
                                                       hwndDlg,
                                                       ShutdownDialogProc,
                                                       (LPARAM)&Context);
@@ -523,7 +567,7 @@ ShutdownDialog(
     else
     {
         ret = DialogBoxParamW(pgContext->hDllInstance,
-                              MAKEINTRESOURCEW(Context.bReasonUI ? IDD_SHUTDOWN_REASON : IDD_SHUTDOWN),
+                              MAKEINTRESOURCEW(Context.bLunaUI ? IDD_SHUTDOWN_FANCY : (Context.bReasonUI ? IDD_SHUTDOWN_REASON : IDD_SHUTDOWN)),
                               hwndDlg,
                               ShutdownDialogProc,
                               (LPARAM)&Context);
@@ -630,6 +674,8 @@ ShellShutdownDialog(
     {
         ERR("Failed to create dialog\n");
     }
+
+    
 
     return 0;
 }
